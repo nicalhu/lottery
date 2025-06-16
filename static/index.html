@@ -1,0 +1,172 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>别墅房间抽奖</title>
+    <link rel="stylesheet" href="static/css/style.css">
+    <script src="https://cdn.jsdelivr.net/npm/fingerprintjs2@2.1.4/fingerprint2.min.js"></script>
+</head>
+<body>
+    <div class="lottery-container">
+        <h1>别墅房间抽奖</h1>
+        
+        <div class="room-display-area" id="roomDisplay">
+            点击开始
+        </div>
+        
+        <button id="drawButton" class="draw-btn">开始抽奖</button>
+        
+        <div id="resultMessage" class="result-display"></div>
+        
+        <div class="rooms-info">
+            <div id="remainingRooms">剩余房间：5</div>
+            <div id="totalRooms">总房间数：5</div>
+        </div>
+        
+        <div id="drawnRoomsListContainer" class="drawn-rooms-list">
+            <h4>已抽取房间列表:</h4>
+            <ul id="drawnRoomsList"></ul>
+        </div>
+        
+        <button id="resetButton" class="reset-btn">重置抽奖</button>
+    </div>
+
+    <script>
+        // 初始化变量
+        const drawButton = document.getElementById('drawButton');
+        const roomDisplay = document.getElementById('roomDisplay');
+        const resultMessage = document.getElementById('resultMessage');
+        const remainingRooms = document.getElementById('remainingRooms');
+        const drawnRoomsList = document.getElementById('drawnRoomsList');
+        const resetButton = document.getElementById('resetButton');
+        const availableRooms = ['101', '201', '202', '203', '301'];
+        let isRolling = false;
+        
+        // 初始化页面
+        function initialize() {
+            // 获取设备指纹
+            new Fingerprint2().get(function(result) {
+                console.log('Visitor ID:', result);
+                // 更新UI状态
+                updateUI();
+            });
+        }
+        
+        // 更新UI状态
+        async function updateUI() {
+            try {
+                const response = await fetch('/api/status');
+                if (!response.ok) throw new Error('获取状态失败');
+                const status = await response.json();
+                
+                remainingRooms.textContent = `剩余房间：${status.remainingRooms}`;
+                drawnRoomsList.innerHTML = '';
+                
+                if (status.drawnRooms.length > 0) {
+                    status.drawnRooms.forEach(room => {
+                        const li = document.createElement('li');
+                        li.textContent = room;
+                        drawnRoomsList.appendChild(li);
+                    });
+                }
+                
+                if (status.isLotteryOver) {
+                    resultMessage.textContent = '所有房间已抽取完毕！';
+                    drawButton.disabled = true;
+                    drawButton.textContent = '抽奖已结束';
+                } else {
+                    drawButton.disabled = false;
+                    drawButton.textContent = '开始抽奖';
+                }
+            } catch (error) {
+                console.error('Error updating UI:', error);
+                resultMessage.textContent = '获取状态失败，请刷新页面。';
+            }
+        }
+        
+        // 开始滚动动画
+        function startRollingAnimation() {
+            isRolling = true;
+            let index = 0;
+            const animation = setInterval(() => {
+                roomDisplay.textContent = availableRooms[index % availableRooms.length];
+                index++;
+            }, 100);
+            
+            // 模拟滚动2秒
+            setTimeout(() => {
+                clearInterval(animation);
+                isRolling = false;
+            }, 2000);
+        }
+        
+        // 处理抽奖按钮点击
+        async function handleDrawClick() {
+            if (isRolling) return;
+            
+            drawButton.disabled = true;
+            drawButton.textContent = '抽奖中...';
+            resultMessage.textContent = '';
+            
+            startRollingAnimation();
+            
+            try {
+                const response = await fetch('/api/draw', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                    },
+                    body: JSON.stringify({})
+                });
+
+                const result = await response.json();
+                
+                if (response.ok) {
+                    roomDisplay.textContent = result.room;
+                    resultMessage.textContent = result.message;
+                    await updateUI();
+                } else {
+                    throw new Error(result.error || '抽奖失败');
+                }
+            } catch (error) {
+                console.error('Error during draw:', error);
+                resultMessage.textContent = error.message || '抽奖失败，请稍后重试。';
+                drawButton.disabled = false;
+                drawButton.textContent = '开始抽奖';
+            }
+        }
+        
+        // 处理重置按钮点击
+        async function handleResetClick() {
+            try {
+                const response = await fetch('/api/reset', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                    }
+                });
+                
+                const responseJson = await response.json();
+                
+                if (responseJson.success) {
+                    resultMessage.textContent = responseJson.message;
+                    await updateUI();
+                } else {
+                    throw new Error(responseJson.error || '重置失败');
+                }
+            } catch (error) {
+                console.error('Error resetting:', error);
+                resultMessage.textContent = error.message || '重置失败，请稍后重试。';
+            }
+        }
+        
+        // 添加事件监听器
+        drawButton.addEventListener('click', handleDrawClick);
+        resetButton.addEventListener('click', handleResetClick);
+        
+        // 页面加载时初始化
+        initialize();
+    </script>
+</body>
+</html>
