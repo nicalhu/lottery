@@ -43,6 +43,10 @@ load_data()
 def index():
     return app.send_static_file('index.html')
 
+@app.route('/index.html')
+def index_html():
+    return app.send_static_file('index.html')
+
 @app.route('/api/status', methods=['GET'])
 def get_status():
     try:

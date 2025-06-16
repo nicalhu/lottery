@@ -4,7 +4,7 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>别墅房间抽奖</title>
-    <link rel="stylesheet" href="static/css/style.css">
+    <link rel="stylesheet" href="css/style.css">
     <script src="https://cdn.jsdelivr.net/npm/fingerprintjs2@2.1.4/fingerprint2.min.js"></script>
 </head>
 <body>
@@ -43,6 +43,9 @@
         const availableRooms = ['101', '201', '202', '203', '301'];
         let isRolling = false;
         
+        // API路径
+        const API_BASE_URL = '/api';
+        
         // 初始化页面
         function initialize() {
             // 获取设备指纹
@@ -56,7 +59,7 @@
         // 更新UI状态
         async function updateUI() {
             try {
-                const response = await fetch('/api/status');
+                const response = await fetch(`${API_BASE_URL}/status`);
                 if (!response.ok) throw new Error('获取状态失败');
                 const status = await response.json();
                 
@@ -112,7 +115,7 @@
             startRollingAnimation();
             
             try {
-                const response = await fetch('/api/draw', {
+                const response = await fetch(`${API_BASE_URL}/draw`, {
                     method: 'POST',
                     headers: {
                         'Content-Type': 'application/json',
@@ -140,20 +143,20 @@
         // 处理重置按钮点击
         async function handleResetClick() {
             try {
-                const response = await fetch('/api/reset', {
+                const response = await fetch(`${API_BASE_URL}/reset`, {
                     method: 'POST',
                     headers: {
                         'Content-Type': 'application/json',
                     }
                 });
                 
-                const responseJson = await response.json();
+                const result = await response.json();
                 
-                if (responseJson.success) {
-                    resultMessage.textContent = responseJson.message;
+                if (result.success) {
+                    resultMessage.textContent = result.message;
                     await updateUI();
                 } else {
-                    throw new Error(responseJson.error || '重置失败');
+                    throw new Error(result.error || '重置失败');
                 }
             } catch (error) {
                 console.error('Error resetting:', error);
