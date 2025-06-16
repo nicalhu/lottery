@@ -1,0 +1,24 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+/* 自定义样式 */
+body {
+    @apply min-h-screen;
+}
+
+.container {
+    @apply min-h-screen flex items-center justify-center;
+}
+
+.room-item {
+    @apply p-4 rounded-lg text-center;
+}
+
+.room-available {
+    @apply bg-green-100 border-green-400;
+}
+
+.room-unavailable {
+    @apply bg-red-100 border-red-400;
+}
