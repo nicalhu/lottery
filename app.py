@@ -3,6 +3,7 @@ from flask_cors import CORS
 import json
 import os
 import datetime
+import random
 from werkzeug.exceptions import HTTPException
 
 app = Flask(__name__, static_folder='static')
@@ -15,7 +16,14 @@ DATA_FILE = 'static/data.json'
 data = {
     "available_rooms": ["101", "201", "202", "203", "301"],
     "drawn_rooms": {},
-    "users": {}
+    "users": {},
+    "participants": [
+        {"name": "梓恒", "participated": False},
+        {"name": "航航", "participated": False},
+        {"name": "一鸣", "participated": False},
+        {"name": "康康", "participated": False},
+        {"name": "凯睿", "participated": False}
+    ]
 }
 
 # 保存数据到文件
@@ -30,7 +38,11 @@ def load_data():
     if os.path.exists(DATA_FILE):
         try:
             with open(DATA_FILE, 'r', encoding='utf-8') as f:
-                data.update(json.load(f))
+                loaded_data = json.load(f)
+                # 确保数据结构完整
+                if 'participants' not in loaded_data:
+                    loaded_data['participants'] = data['participants']
+                data.update(loaded_data)
         except Exception as e:
             print(f"Error loading data: {e}")
     else:
@@ -51,11 +63,12 @@ def index_html():
 def get_status():
     try:
         return jsonify({
-            'availableRooms': data['available_rooms'],
-            'drawnRooms': list(data['drawn_rooms'].values()),
+            'available_rooms': data['available_rooms'],
+            'drawn_rooms': data['drawn_rooms'],  # 确保是对象格式
             'isLotteryOver': len(data['available_rooms']) == 0,
             'totalRooms': 5,
-            'remainingRooms': len(data['available_rooms'])
+            'remainingRooms': len(data['available_rooms']),
+            'participants': data['participants']
         })
     except Exception as e:
         return jsonify({
@@ -65,36 +78,39 @@ def get_status():
 @app.route('/api/draw', methods=['POST'])
 def draw():
     try:
-        # 获取用户设备指纹
-        user_id = request.headers.get('User-Agent') + str(datetime.datetime.now())
+        request_data = request.json
+        participant_name = request_data.get('participantName')
         
-        # 检查用户是否已抽取
-        if user_id in data['users']:
+        participant = next((p for p in data['participants'] if p['name'] == participant_name), None)
+        if not participant:
             return jsonify({
-                'error': '您已参与过本次抽奖，不能重复抽取。'
+                'error': f'无效的参与者名称: {participant_name}'
             }), 403
         
-        # 检查是否有可用房号
+        if participant['participated']:
+            return jsonify({
+                'error': f'{participant_name} 已经参与过抽奖'
+            }), 403
+        
         if not data['available_rooms']:
             return jsonify({
                 'error': '所有房号已被抽完！'
             }), 403
         
-        # 随机抽取一个房号
-        room = data['available_rooms'][0]
+        # 随机选择一个房间
+        room = random.choice(data['available_rooms'])
         
-        # 更新数据
         data['available_rooms'].remove(room)
-        data['drawn_rooms'][user_id] = room
-        data['users'][user_id] = datetime.datetime.now().isoformat()
+        data['drawn_rooms'][participant_name] = room
+        data['users'][participant_name] = datetime.datetime.now().isoformat()
+        participant['participated'] = True
         
-        # 保存数据
         save_data()
         
         return jsonify({
             'success': True,
             'room': room,
-            'message': f'恭喜您！抽中了 {room} 房间！'
+            'message': f'恭喜 {participant_name}！抽中了 {room} 房间！'
         })
     except Exception as e:
         return jsonify({
@@ -108,6 +124,8 @@ def reset():
         data['available_rooms'] = ["101", "201", "202", "203", "301"]
         data['drawn_rooms'] = {}
         data['users'] = {}
+        for participant in data['participants']:
+            participant['participated'] = False
         
         # 保存重置后的数据
         save_data()

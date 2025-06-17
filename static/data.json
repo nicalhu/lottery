@@ -1,15 +1,33 @@
 {
   "available_rooms": [
+    "101",
+    "201",
     "202",
     "203",
     "301"
   ],
-  "drawn_rooms": {
-    "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/137.0.0.0 Safari/537.36 Edg/137.0.0.02025-06-16 15:57:56.299925": "101",
-    "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/137.0.0.0 Safari/537.36 Edg/137.0.0.02025-06-16 15:57:59.275830": "201"
-  },
-  "users": {
-    "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/137.0.0.0 Safari/537.36 Edg/137.0.0.02025-06-16 15:57:56.299925": "2025-06-16T15:57:56.299925",
-    "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/137.0.0.0 Safari/537.36 Edg/137.0.0.02025-06-16 15:57:59.275830": "2025-06-16T15:57:59.275830"
-  }
+  "drawn_rooms": {},
+  "users": {},
+  "participants": [
+    {
+      "name": "梓恒",
+      "participated": false
+    },
+    {
+      "name": "航航",
+      "participated": false
+    },
+    {
+      "name": "一鸣",
+      "participated": false
+    },
+    {
+      "name": "康康",
+      "participated": false
+    },
+    {
+      "name": "凯睿",
+      "participated": false
+    }
+  ]
 }

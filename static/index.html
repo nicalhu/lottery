@@ -11,11 +11,16 @@
     <div class="lottery-container">
         <h1>别墅房间抽奖</h1>
         
-        <div class="room-display-area" id="roomDisplay">
-            点击开始
+        <div class="participant-selection">
+            <label for="participantSelect">请选择参与者:</label>
+            <select id="participantSelect" class="participant-select">
+                <!-- 选项将通过JavaScript动态添加 -->
+            </select>
         </div>
         
-        <button id="drawButton" class="draw-btn">开始抽奖</button>
+        <div class="room-display-area" id="roomDisplay" style="cursor:pointer;">
+            点击开始
+        </div>
         
         <div id="resultMessage" class="result-display"></div>
         
@@ -25,8 +30,8 @@
         </div>
         
         <div id="drawnRoomsListContainer" class="drawn-rooms-list">
-            <h4>已抽取房间列表:</h4>
-            <ul id="drawnRoomsList"></ul>
+            <h3 style="text-align: center;">已抽取房间列表</h3>
+            <ul id="drawnRoomsList" style="width: 100%; padding: 0; margin: 0; list-style: none;"></ul>
         </div>
         
         <button id="resetButton" class="reset-btn">重置抽奖</button>
@@ -34,57 +39,120 @@
 
     <script>
         // 初始化变量
-        const drawButton = document.getElementById('drawButton');
         const roomDisplay = document.getElementById('roomDisplay');
         const resultMessage = document.getElementById('resultMessage');
         const remainingRooms = document.getElementById('remainingRooms');
         const drawnRoomsList = document.getElementById('drawnRoomsList');
         const resetButton = document.getElementById('resetButton');
+        const participantSelect = document.getElementById('participantSelect');
         const availableRooms = ['101', '201', '202', '203', '301'];
         let isRolling = false;
+        let data = {
+            participants: []
+        };
         
         // API路径
         const API_BASE_URL = '/api';
         
         // 初始化页面
         function initialize() {
-            // 获取设备指纹
-            new Fingerprint2().get(function(result) {
-                console.log('Visitor ID:', result);
-                // 更新UI状态
-                updateUI();
+            console.log('Initializing...');
+            // 初始化参与者选择框
+            updateParticipantSelect();
+            // 更新UI状态
+            updateUI();
+        }
+        
+        // 更新参与者选择框
+        function updateParticipantSelect() {
+            // 清空选项
+            participantSelect.innerHTML = '';
+            
+            // 添加默认选项
+            const defaultOption = document.createElement('option');
+            defaultOption.value = '';
+            defaultOption.textContent = '请选择参与者';
+            participantSelect.appendChild(defaultOption);
+            
+            // 添加参与者选项
+            data.participants.forEach(participant => {
+                const option = document.createElement('option');
+                option.value = participant.name;
+                option.textContent = participant.name;
+                option.disabled = participant.participated;
+                participantSelect.appendChild(option);
             });
         }
         
         // 更新UI状态
         async function updateUI() {
             try {
+                console.log('Updating UI...');
                 const response = await fetch(`${API_BASE_URL}/status`);
-                if (!response.ok) throw new Error('获取状态失败');
                 const status = await response.json();
+                console.log('Status response:', status);
                 
-                remainingRooms.textContent = `剩余房间：${status.remainingRooms}`;
-                drawnRoomsList.innerHTML = '';
-                
-                if (status.drawnRooms.length > 0) {
-                    status.drawnRooms.forEach(room => {
-                        const li = document.createElement('li');
-                        li.textContent = room;
-                        drawnRoomsList.appendChild(li);
-                    });
+                if (status.error) {
+                    throw new Error(status.error);
                 }
+                
+                // 更新数据
+                data.participants = status.participants || [];
+                console.log('Participants:', data.participants);
+                
+                // 更新UI
+                remainingRooms.textContent = `剩余房间：${status.remainingRooms}`;
+                drawnRoomsList.innerHTML = ''; // 清空列表
+                
+                // 显示已抽房间列表（人名+房间号）
+                const drawnRooms = status.drawn_rooms || {};
+                console.log('Drawn rooms:', drawnRooms);
+                
+                // 遍历已抽房间对象
+                Object.entries(drawnRooms).forEach(([participant, room]) => {
+                    console.log(`Checking participant: ${participant}, room: ${room}`);
+                    if (participant && room) {
+                        const li = document.createElement('li');
+                        li.style.display = 'flex';
+                        li.style.justifyContent = 'space-between';
+                        li.style.padding = '8px';
+                        li.style.borderBottom = '1px solid #e5e7eb';
+                        
+                        const participantSpan = document.createElement('span');
+                        participantSpan.textContent = participant;
+                        participantSpan.style.fontWeight = 'bold';
+                        
+                        const roomSpan = document.createElement('span');
+                        roomSpan.textContent = `房间号：${room}`;
+                        
+                        li.appendChild(participantSpan);
+                        li.appendChild(roomSpan);
+                        
+                        drawnRoomsList.appendChild(li);
+                        console.log(`Added room for participant: ${participant}, room: ${room}`);
+                    }
+                });
                 
                 if (status.isLotteryOver) {
                     resultMessage.textContent = '所有房间已抽取完毕！';
-                    drawButton.disabled = true;
-                    drawButton.textContent = '抽奖已结束';
+                    roomDisplay.classList.add('disabled');
                 } else {
-                    drawButton.disabled = false;
-                    drawButton.textContent = '开始抽奖';
+                    // 检查是否有可用的参与者
+                    const availableParticipants = data.participants.filter(p => !p.participated);
+                    if (availableParticipants.length === 0) {
+                        resultMessage.textContent = '所有参与者都已抽取房号！';
+                        roomDisplay.classList.add('disabled');
+                    } else {
+                        roomDisplay.classList.remove('disabled');
+                    }
                 }
+                
+                // 更新参与者选择框
+                updateParticipantSelect();
             } catch (error) {
                 console.error('Error updating UI:', error);
                 resultMessage.textContent = '获取状态失败，请刷新页面。';
+                roomDisplay.classList.add('disabled');
             }
         }
         
@@ -104,12 +172,17 @@
             }, 2000);
         }
         
-        // 处理抽奖按钮点击
-        async function handleDrawClick() {
+        // 处理抽奖
+        async function handleDraw() {
+            const selectedParticipant = participantSelect.value;
+            if (!selectedParticipant) {
+                resultMessage.textContent = '请选择参与者！';
+                return;
+            }
+            
             if (isRolling) return;
             
-            drawButton.disabled = true;
-            drawButton.textContent = '抽奖中...';
+            roomDisplay.classList.add('disabled');
             resultMessage.textContent = '';
             
             startRollingAnimation();
@@ -120,23 +193,27 @@
                     headers: {
                         'Content-Type': 'application/json',
                     },
-                    body: JSON.stringify({})
+                    body: JSON.stringify({ participantName: selectedParticipant })
                 });
 
                 const result = await response.json();
+                console.log('Draw result:', result);
                 
-                if (response.ok) {
-                    roomDisplay.textContent = result.room;
-                    resultMessage.textContent = result.message;
-                    await updateUI();
+                if (result.success) {
+                    // 等待动画结束后更新结果
+                    setTimeout(() => {
+                        roomDisplay.textContent = result.room;
+                        resultMessage.textContent = result.message;
+                        // 通过updateUI更新所有状态，包括已抽房间列表
+                        updateUI();
+                    }, 2000);
                 } else {
                     throw new Error(result.error || '抽奖失败');
                 }
             } catch (error) {
                 console.error('Error during draw:', error);
                 resultMessage.textContent = error.message || '抽奖失败，请稍后重试。';
-                drawButton.disabled = false;
-                drawButton.textContent = '开始抽奖';
+                roomDisplay.classList.remove('disabled');
             }
         }
         
@@ -158,14 +235,14 @@
                 } else {
                     throw new Error(result.error || '重置失败');
                 }
-            } catch (error) {
+            } catch (error) {   
                 console.error('Error resetting:', error);
                 resultMessage.textContent = error.message || '重置失败，请稍后重试。';
             }
         }
         
         // 添加事件监听器
-        drawButton.addEventListener('click', handleDrawClick);
+        roomDisplay.addEventListener('click', handleDraw);
         resetButton.addEventListener('click', handleResetClick);
         
         // 页面加载时初始化
